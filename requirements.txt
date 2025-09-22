@@ -1,4 +1,12 @@
-pandas==2.3.2
-plotly==6.3.0
-Requests==2.32.5
-streamlit==1.47.1
+streamlit
+crewai
+crewai-tools
+langchain
+langchain-community
+langchain-core
+python-dotenv
+chromadb
+pypdf
+gTTS
+unstructured
+yt-dlp
