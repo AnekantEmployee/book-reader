@@ -1,28 +1,23 @@
 # rag_system/tools.py
-from crewai_tools import BaseTool
+from crewai.tools import BaseTool
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_community.llms import MistralAI
+from langchain_mistralai import ChatMistralAI as MistralAI
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import MistralAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
-import os
+from typing import Any
+from pydantic import BaseModel, ConfigDict
 
-load_dotenv()
-
-# Initialize LLM and Embeddings
-mistral_api_key = os.getenv("MISTRAL_API_KEY")
-llm = MistralAI(mistral_api_key=mistral_api_key)
-embeddings = MistralAIEmbeddings(model="mistral-embed", api_key=mistral_api_key)
-
+# Updated RagRetrievalTool to be Pydantic-compliant
 class RagRetrievalTool(BaseTool):
     name: str = "RAG Retrieval Tool"
     description: str = "A tool to retrieve relevant documents from the vector store based on a query."
+    
+    # 📝 New: Use a Pydantic model_config to allow arbitrary types
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, vector_store):
-        super().__init__()
-        self.vector_store = vector_store
+    # 📝 New: Define the vector_store as a class field with a type hint
+    vector_store: Any
 
     def _run(self, query: str):
         # Create a retriever
@@ -38,7 +33,7 @@ class RagRetrievalTool(BaseTool):
         Question: {input}""")
         
         # Create the document chain
-        document_chain = create_stuff_documents_chain(llm, prompt)
+        document_chain = create_stuff_documents_chain(MistralAI(), prompt)
         
         # Create the retrieval chain
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
@@ -47,17 +42,3 @@ class RagRetrievalTool(BaseTool):
         response = retrieval_chain.invoke({"input": query})
         
         return response['answer']
-
-class WebSearchTool(BaseTool):
-    name: str = "Web Search Tool"
-    description: str = "A tool to perform a web search for general queries."
-
-    # Using the pre-built SerperDevTool from crewai-tools
-    # SerperDevTool needs SERPER_API_KEY environment variable
-    def _run(self, query: str):
-        return self.serper_dev_tool._run(query)
-
-    def __init__(self):
-        super().__init__()
-        from crewai_tools import SerperDevTool
-        self.serper_dev_tool = SerperDevTool()

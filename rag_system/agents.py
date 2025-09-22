@@ -1,14 +1,14 @@
 # rag_system/agents.py
 from crewai import Agent
 from crewai_tools import SerperDevTool
-from langchain_community.llms import MistralAI
+from langchain_mistralai import ChatMistralAI
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
 mistral_api_key = os.getenv("MISTRAL_API_KEY")
-llm = MistralAI(mistral_api_key=mistral_api_key)
+llm = ChatMistralAI(model="mistral/mistral-small", mistral_api_key=mistral_api_key)
 
 # Initialize the search tool
 serper_search_tool = SerperDevTool()

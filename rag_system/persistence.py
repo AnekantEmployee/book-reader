@@ -5,7 +5,6 @@ import uuid
 DB_PATH = "chat_history.db"
 
 def init_db():
-    """Initializes the SQLite database tables if they don't exist."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -22,14 +21,13 @@ def init_db():
             content TEXT NOT NULL,
             audio_path TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (chat_id) REFERENCES chats (id)
+            FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
         )
     """)
     conn.commit()
     conn.close()
 
 def create_new_chat():
-    """Creates a new chat entry in the database and returns its ID."""
     init_db()
     chat_id = str(uuid.uuid4())
     conn = sqlite3.connect(DB_PATH)
@@ -40,7 +38,6 @@ def create_new_chat():
     return chat_id
 
 def get_all_chats():
-    """Retrieves all chat IDs and their first message for display in the sidebar."""
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -48,7 +45,7 @@ def get_all_chats():
         SELECT c.id, m.content
         FROM chats c
         LEFT JOIN (
-            SELECT chat_id, content FROM messages GROUP BY chat_id
+            SELECT chat_id, content FROM messages ORDER BY timestamp LIMIT 1
         ) m ON c.id = m.chat_id
         ORDER BY c.created_at DESC
     """)
@@ -57,7 +54,6 @@ def get_all_chats():
     return chats
 
 def load_chat_history(chat_id):
-    """Loads all messages for a given chat ID from the database."""
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -72,11 +68,19 @@ def load_chat_history(chat_id):
     return history
 
 def save_chat_message(chat_id, role, content, audio_path=None):
-    """Saves a single message to the database."""
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO messages (chat_id, role, content, audio_path) VALUES (?, ?, ?, ?)",
                    (chat_id, role, content, audio_path))
+    conn.commit()
+    conn.close()
+
+def delete_chat(chat_id):
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # The ON DELETE CASCADE rule on the messages table handles the deletion of messages automatically
+    cursor.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
     conn.commit()
     conn.close()
