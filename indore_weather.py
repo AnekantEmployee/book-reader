@@ -1,14 +1,11 @@
-import os
 import time
-import json
+import requests
 import threading
 import pandas as pd
 import streamlit as st
-import plotly.express as px
+from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import requests
-from datetime import datetime
 
 # Streamlit Page Config
 st.set_page_config(page_title="Indore Weather", page_icon="🌤️", layout="wide")
