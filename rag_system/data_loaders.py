@@ -2,6 +2,7 @@
 from langchain_community.document_loaders import PyPDFLoader, WebBaseLoader, YoutubeLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pathlib import Path
+import os
 
 def load_and_process_data(uploaded_files, urls_input):
     documents = []
