@@ -1,23 +1,7 @@
 # rag_system/agents.py
 
-import os
-from crewai import Agent, LLM
-from dotenv import load_dotenv
-
-# Disable telemetry
-os.environ["OTEL_SDK_DISABLED"] = "true"
-os.environ["CREWAI_TELEMETRY"] = "false"
-
-load_dotenv()
-
-google_api_key = os.getenv("GOOGLE_API_KEY")
-
-# Use CrewAI's native LLM class for Gemini
-llm = LLM(
-    model="gemini/gemini-1.5-flash",
-    temperature=0.1,
-    api_key=google_api_key,
-)
+from crewai import Agent
+from rag_system.config import llm
 
 
 class RagAgents:
@@ -27,29 +11,40 @@ class RagAgents:
     def qna_agent(self):
         return Agent(
             role="RAG Assistant",
-            goal="Answer user questions concisely (150-250 words) using retrieved documents. Understand semantic variations in queries.",
-            backstory="""You are an intelligent RAG assistant that understands context and semantic variations.
-            When users ask about concepts using different spellings or formats (like "fav-up", "fav up", "favup"),
-            you understand they refer to the same thing. Provide concise, helpful answers based on available information.""",
+            goal="Answer user questions concisely and accurately using retrieved documents. Focus on providing direct, fact-based answers. Do not handle any formatting.",
+            backstory="""You are an intelligent RAG assistant that understands context and provides helpful, concise answers based on available information. Your goal is to be accurate and direct, citing information when it is available in the retrieved documents.""",
             llm=llm,
             tools=self.tools,
-            verbose=False,
+            verbose=True,
             allow_delegation=False,
-            max_iter=2,
-            max_execution_time=60,
+            max_iter=3,
+            max_execution_time=90,
             memory=False,
         )
 
     def summarization_agent(self):
         return Agent(
             role="Document Summarizer",
-            goal="Create concise document summaries (150-250 words maximum).",
-            backstory="""You are an expert at creating clear, concise summaries.
-            Extract key information and present it in an organized, readable format.""",
+            goal="Create comprehensive and concise document summaries (150-250 words maximum).",
+            backstory="""You are an expert at creating clear, concise summaries. You extract key information and present it in an organized, readable format for easy understanding.""",
             llm=llm,
-            verbose=False,
+            tools=self.tools,
+            verbose=True,
             allow_delegation=False,
             max_iter=1,
             max_execution_time=60,
+            memory=False,
+        )
+
+    def formatting_agent(self):
+        return Agent(
+            role="Answer Formatter",
+            goal="Take a raw text answer and re-format it into a structured, easy-to-read response using Markdown, including bullet points and headings.",
+            backstory="""You are an expert at taking raw information and making it presentable. Your only job is to format a final answer. You must follow the user's explicit formatting rules, such as using bullet points and headings to break up content.""",
+            llm=llm,
+            verbose=True,
+            allow_delegation=False,
+            max_iter=1,
+            max_execution_time=30,
             memory=False,
         )

@@ -2,9 +2,9 @@
 
 import re
 import os
-import json
-from crewai import LLM
+import time
 from crewai.tools import BaseTool
+from crewai import LLM
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.vectorstores import Chroma
@@ -13,13 +13,23 @@ from typing import Any, Type, List, Dict
 from pydantic import BaseModel, ConfigDict, Field
 from dotenv import load_dotenv
 import warnings
-import streamlit as st
-import time
 
 # Disable telemetry
 os.environ["OTEL_SDK_DISABLED"] = "true"
 warnings.filterwarnings("ignore")
 load_dotenv()
+
+# Centralized LLM setup
+google_api_key = os.getenv("GOOGLE_API_KEY")
+
+if not google_api_key:
+    raise ValueError("GOOGLE_API_KEY environment variable not set.")
+
+llm = LLM(
+    model="gemini/gemini-1.5-flash",
+    temperature=0.1,
+    api_key=google_api_key,
+)
 
 
 class RagRetrievalToolInput(BaseModel):
@@ -53,36 +63,7 @@ class EnhancedRagRetrievalTool(BaseTool):
             words = cleaned_query.split()
             if len(words) > 3:
                 stop_words = {
-                    "the",
-                    "a",
-                    "an",
-                    "and",
-                    "or",
-                    "but",
-                    "in",
-                    "on",
-                    "at",
-                    "to",
-                    "for",
-                    "of",
-                    "with",
-                    "by",
-                    "is",
-                    "are",
-                    "was",
-                    "were",
-                    "be",
-                    "been",
-                    "have",
-                    "has",
-                    "had",
-                    "do",
-                    "does",
-                    "did",
-                    "will",
-                    "would",
-                    "could",
-                    "should",
+                    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
                 }
                 key_terms = [
                     word for word in words if word not in stop_words and len(word) > 2
@@ -171,17 +152,8 @@ class EnhancedRagRetrievalTool(BaseTool):
 
             # Create retrieval chain with correct Google Gen model specification
             try:
-                google_api_key = os.getenv("GOOGLE_API_KEY")
-                if not google_api_key:
-                    return "Error: GOOGLE_API_KEY not found in environment variables."
-
-                # Fix: Use correct model specification for LiteLLM compatibility
-                # Use CrewAI's native LLM class for Gemini
-                llm = LLM(
-                    model="gemini/gemini-1.5-flash",
-                    temperature=0.1,
-                    api_key=google_api_key,  # Use GEMINI_API_KEY instead of GOOGLE_API_KEY
-                )
+                # Use centralized LLM object
+                llm = self._get_llm()
 
                 # Enhanced prompt template
                 prompt_template = ChatPromptTemplate.from_template(
@@ -242,6 +214,20 @@ class EnhancedRagRetrievalTool(BaseTool):
 
         except Exception as e:
             return f"Error in retrieval tool: {str(e)}"
+
+    def _get_llm(self):
+        """Helper method to get the centralized LLM instance"""
+        try:
+            from rag_system.config import llm as global_llm
+            return global_llm
+        except ImportError:
+            # Fallback for testing or standalone use
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            return LLM(
+                model="gemini/gemini-1.5-flash",
+                temperature=0.1,
+                api_key=google_api_key,
+            )
 
     def _fallback_response(self, documents: List, query: str) -> str:
         """Fallback response when main retrieval chain fails"""

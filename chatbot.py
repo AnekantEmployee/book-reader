@@ -266,6 +266,7 @@ if setup_ok:
     st.success(f"✅ {setup_message}")
 else:
     st.error(f"❌ Google Gen AI Setup Issue: {setup_message}")
+    # Stop the app if API key is invalid
     st.stop()
 
 # Initialize NLP components

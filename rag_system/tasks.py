@@ -14,45 +14,55 @@ class RagTasks:
         return Task(
             description=dedent(
                 f"""
-                Answer the following question using the Enhanced RAG Retrieval Tool with improved semantic search:
+                Use the Enhanced RAG Retrieval Tool to find the most relevant information and directly answer the following question:
                 
                 Question: '{question}'
                 
                 Instructions:
-                1. Use the tool to find the most relevant information
-                2. Provide a comprehensive answer (200-400 words)
-                3. Structure the response with clear main points
-                4. Include specific details when available
-                5. If information is limited, acknowledge this clearly
-                6. Focus on being helpful and accurate
-                7. Use natural, conversational language
-                
-                The tool will automatically handle query optimization and semantic search.
+                1. Provide a comprehensive answer based on the context.
+                2. If information is limited, clearly state "No relevant information found in the documents".
+                3. The output should be a single, raw block of text ready for final formatting. Do not apply any formatting or special characters.
                 """
             ),
             expected_output=dedent(
                 """
-                A well-structured, comprehensive answer (200-400 words) that:
-                - Directly addresses the question
-                - Uses information retrieved from the knowledge base
-                - Is organized with clear main points
-                - Includes relevant details and examples
-                - Acknowledges any limitations in available information
-                - Uses natural, helpful language
+                A single, raw text block containing the comprehensive answer to the question.
                 """
             ),
             agent=agent,
-            tools=[self.qna_tool] if self.qna_tool else [],
+            tools=[self.qna_tool],
         )
+
+    def format_answer_task(self, agent):
+        return Task(
+            description=dedent(
+                """
+                Take the raw answer from the previous task and re-format it into a structured, easy-to-read response.
+                
+                Instructions:
+                1. Divide the answer into clear sections using Markdown headings (##).
+                2. Use bullet points (-) for lists of items or key points.
+                3. The final response should be professional, well-organized, and easy to read.
+                4. Do not add any new information.
+                """
+            ),
+            expected_output=dedent(
+                """
+                A well-structured, formatted response using Markdown with headings and bullet points.
+                """
+            ),
+            agent=agent,
+        )
+
 
     def summarize_documents_task(self, agent, documents):
         """Enhanced document summarization task"""
         # Prepare document content for summarization
         doc_content = ""
         if documents:
-            for i, doc in enumerate(documents[:5]):  # Limit to first 5 docs
+            for i, doc in enumerate(documents[:5]):
                 if hasattr(doc, "page_content"):
-                    content = doc.page_content[:1000]  # Limit content length
+                    content = doc.page_content[:1000]
                 elif isinstance(doc, str):
                     content = doc[:1000]
                 else:
@@ -63,22 +73,19 @@ class RagTasks:
         return Task(
             description=dedent(
                 f"""
-                Create a comprehensive summary of the uploaded documents using the Enhanced RAG Retrieval Tool.
+                Create a comprehensive summary of the uploaded documents.
                 
                 Task: Analyze and summarize the key information from the following documents:
                 
                 {doc_content}
                 
                 Instructions:
-                1. Identify the main topics and themes across all documents
-                2. Extract key facts, concepts, and important details
-                3. Organize the information logically
-                4. Create a summary of 250-400 words
-                5. Use bullet points for key findings when appropriate
-                6. Highlight any important relationships or connections between topics
-                7. Make the summary accessible and informative
-                
-                Focus on providing value to users who will be asking questions about this content.
+                1. Identify the main topics and themes.
+                2. Extract key facts, concepts, and important details.
+                3. Organize the information logically.
+                4. Create a summary of 250-400 words.
+                5. Use bullet points for key findings when appropriate.
+                6. Make the summary accessible and informative.
                 """
             ),
             expected_output=dedent(

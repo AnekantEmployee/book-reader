@@ -14,6 +14,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
 import streamlit as st
 import time
+from rag_system.config import llm
 
 # Disable all telemetry sources
 os.environ["OTEL_SDK_DISABLED"] = "true"
@@ -80,7 +81,7 @@ def initialize_mistral_embeddings():
     try:
         google_api_key = os.getenv("GOOGLE_API_KEY")
         if not google_api_key:
-            return "Error: GOOGLE_API_KEY not found in environment variables."
+            raise RuntimeError("Error: GOOGLE_API_KEY not found in environment variables.")
 
         # Initialize Google Gen embeddings with extended timeouts
         embeddings = GoogleGenerativeAIEmbeddings(
@@ -141,20 +142,22 @@ def create_rag_crew(user_query, vector_store):
         agents = RagAgents([qna_tool])
         tasks = RagTasks(qna_tool)
 
-        # Create agent and task
+        # Create a two-step sequential crew
         rag_assistant = agents.qna_agent()
         answer_task = tasks.answer_question_task(rag_assistant, user_query)
+        
+        formatter_agent = agents.formatting_agent()
+        format_task = tasks.format_answer_task(formatter_agent)
 
-        # Create crew with optimized configuration
         rag_crew = Crew(
-            agents=[rag_assistant],
-            tasks=[answer_task],
+            agents=[rag_assistant, formatter_agent],
+            tasks=[answer_task, format_task],
             process=Process.sequential,
-            verbose=False,
+            verbose=True, # Set verbose to True for debugging
             memory=False,
             cache=False,
             share_crew=False,
-            full_output=False,
+            full_output=True,
             step_callback=None,
             max_execution_time=120,
             max_retry_limit=2,
@@ -364,37 +367,68 @@ def verify_google_genai_setup():
     try:
         google_api_key = os.getenv("GOOGLE_API_KEY")
         if not google_api_key:
-            return "Error: GOOGLE_API_KEY not found in environment variables."
+            return False, "GOOGLE_API_KEY not found in environment variables."
 
-        # Test embeddings initialization with timeout
+        # Initialize a test LLM instance
+        from rag_system.config import llm as global_llm
+
+        # Test embedding generation
+        embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/gemini-embedding-001",
+            google_api_key=google_api_key,
+        )
+        test_embedding = embeddings.embed_query("test")
+
+        if not test_embedding or len(test_embedding) == 0:
+            return False, "Google Gen embeddings returned empty result."
+
+        # Test the LLM by running a simple Crew
         try:
-            # Initialize Google Gen embeddings with extended timeouts
-            embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/gemini-embedding-001",
-                google_api_key=google_api_key,
-                timeout=60,
-                max_retries=3,
-                wait_time=5,
+            from crewai import Agent, Task, Crew, Process
+
+            test_agent = Agent(
+                role="Test Agent",
+                goal="Validate LLM connectivity by responding to a simple prompt.",
+                backstory="An agent designed to check the LLM connection.",
+                llm=global_llm,
+                verbose=False,
+                allow_delegation=False,
             )
 
-            # Test embedding generation
-            test_embedding = embeddings.embed_query("test")
-            if not test_embedding or len(test_embedding) == 0:
-                return False, "Google Gen embeddings returned empty result"
+            test_task = Task(
+                description="Respond with a short confirmation message.",
+                expected_output="A brief message confirming the task completion.",
+                agent=test_agent,
+            )
 
-            return True, f"Google Gen AI verified (dimension: {len(test_embedding)})"
+            test_crew = Crew(
+                agents=[test_agent],
+                tasks=[test_task],
+                process=Process.sequential,
+                verbose=False,
+            )
+            
+            # Use kickoff() to test the LLM
+            test_response = test_crew.kickoff()
+
+            if test_response:
+                return True, f"Google Gen AI verified (dimension: {len(test_embedding)})"
+            else:
+                return False, "LLM failed to generate a response via a test crew."
 
         except Exception as e:
             error_msg = str(e)
-            if "Server disconnected" in error_msg:
-                return False, "Google Gen AI server connection lost"
+            if "AuthenticationError" in error_msg:
+                return False, "Authentication failed. The API key is not valid."
+            elif "Server disconnected" in error_msg:
+                return False, "Google Gen AI server connection lost."
             elif "timeout" in error_msg.lower():
-                return False, "Google Gen AI request timed out"
+                return False, "Google Gen AI request timed out."
             else:
-                return False, f"Google Gen AI error: {e}"
+                return False, f"Google Gen AI error: {e}."
 
     except Exception as e:
-        return False, f"Google Gen AI setup error: {e}"
+        return False, f"Google Gen AI setup error: {e}."
 
 
 # Cleanup function for app shutdown
