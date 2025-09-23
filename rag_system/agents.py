@@ -1,17 +1,24 @@
 # rag_system/agents.py
+import os
 from crewai import Agent
-from crewai_tools import SerperDevTool
 from langchain_mistralai import ChatMistralAI
 from dotenv import load_dotenv
-import os
+
+# Disable telemetry
+os.environ["OTEL_SDK_DISABLED"] = "true"
+os.environ["CREWAI_TELEMETRY"] = "false"
 
 load_dotenv()
 
 mistral_api_key = os.getenv("MISTRAL_API_KEY")
-llm = ChatMistralAI(model="mistral/mistral-small", mistral_api_key=mistral_api_key)
 
-# Initialize the search tool
-serper_search_tool = SerperDevTool()
+# Fix: Use correct model name format for Mistral
+llm = ChatMistralAI(
+    model="mistral-small-latest",  # Correct Mistral model name
+    mistral_api_key=mistral_api_key,
+    temperature=0.1,
+)
+
 
 class RagAgents:
     def __init__(self, tools):
@@ -19,21 +26,30 @@ class RagAgents:
 
     def qna_agent(self):
         return Agent(
-            role='RAG Assistant',
-            goal='Answer user questions based ONLY on the provided context. If the answer is not in the context, state that you cannot answer.',
-            backstory="You are a specialized RAG (Retrieval-Augmented Generation) assistant. Your core directive is to be an expert in the given documents. You strictly adhere to the information provided and will never use external knowledge to formulate your answer.",
+            role="RAG Assistant",
+            goal="Answer user questions concisely (150-200 words) using retrieved documents. Understand semantic variations in queries.",
+            backstory="""You are an intelligent RAG assistant that understands context and semantic variations. 
+            When users ask about concepts using different spellings or formats (like "fav-up", "fav up", "favup"), 
+            you understand they refer to the same thing. Provide concise, helpful answers based on available information.""",
             llm=llm,
             tools=self.tools,
-            verbose=True,
-            allow_delegation=False
+            verbose=False,
+            allow_delegation=False,
+            max_iter=2,
+            max_execution_time=60,
+            memory=False,
         )
 
     def summarization_agent(self):
         return Agent(
-            role='Document Summarizer',
-            goal='Create a concise and accurate summary of the provided documents.',
-            backstory="You are a meticulous summarization expert. Your job is to read long documents and distill their essence into a clear, easy-to-understand summary. Your summaries must be factual and capture all main points.",
+            role="Document Summarizer",
+            goal="Create concise document summaries (150-200 words maximum).",
+            backstory="""You are an expert at creating clear, concise summaries. 
+            Extract key information and present it in an organized, readable format.""",
             llm=llm,
-            verbose=True,
-            allow_delegation=False
+            verbose=False,
+            allow_delegation=False,
+            max_iter=1,
+            max_execution_time=60,
+            memory=False,
         )
