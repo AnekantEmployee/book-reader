@@ -18,7 +18,7 @@ from rag_system.crew_setup import (
     add_documents_to_chat_store,
     reset_chat_vector_store,
     get_chat_vector_store_info,
-    verify_google_genai_setup,
+    verify_setup,
     cleanup_on_exit,
 )
 from rag_system.persistence import (
@@ -339,7 +339,7 @@ st.caption("🤖 Powered by Google Gen AI Embeddings & Language Models")
 st.caption("💬 Each chat maintains its own document context")
 
 # Verify Google Gen setup at startup
-setup_ok, setup_message = verify_google_genai_setup()
+setup_ok, setup_message = verify_setup()
 if setup_ok:
     st.success(f"✅ {setup_message}")
 else:
