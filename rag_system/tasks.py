@@ -1,12 +1,52 @@
 from crewai import Task
 from textwrap import dedent
-from typing import List, Any
 
 
 class RagTasks:
 
     def __init__(self, qna_tool):
         self.qna_tool = qna_tool
+
+    def extract_subtopics_task(self, agent, documents):
+        """
+        Task to extract a table of contents or key subtopics from documents.
+        """
+        # Combine the content from the first few documents to analyze their structure
+        doc_content = ""
+        for i, doc in enumerate(documents[:3]): # Limit to a few docs for context window
+            if hasattr(doc, "page_content"):
+                doc_content += f"Document {i+1} Content:\n{doc.page_content}\n\n"
+            elif isinstance(doc, str):
+                doc_content += f"Document {i+1} Content:\n{doc}\n\n"
+
+        return Task(
+            description=dedent(
+                f"""
+                Analyze the provided document content and identify key headings, sections, or subtopics
+                that could serve as a table of contents or suggested questions for a user.
+                
+                Document Content:
+                {doc_content}
+                
+                Instructions:
+                1. Read through the content to understand its structure and main themes.
+                2. Extract 5-10 distinct subtopics or section titles.
+                3. Present these subtopics as a bulleted list.
+                4. Do not provide any additional text or explanation, just the list.
+                """
+            ),
+            expected_output=dedent(
+                """
+                A bulleted list of 5-10 suggested subtopics or questions, formatted in Markdown.
+                Example:
+                - What is the main purpose of the document?
+                - Explain the process of data collection.
+                - What are the key findings?
+                """
+            ),
+            agent=agent,
+            tools=[self.qna_tool] if self.qna_tool else [],
+        )
 
     def answer_question_task(self, agent, question):
         """Enhanced question answering task with better context handling"""

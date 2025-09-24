@@ -259,6 +259,40 @@ def generate_mistral_auto_summary(documents, vector_store, nlp_spacy=None):
         st.error(f"Google Gen auto summary generation failed: {e}")
         return None
 
+def generate_subtopic_suggestions(documents, vector_store):
+    """Generate subtopic suggestions using a dedicated CrewAI agent."""
+    try:
+        if not documents:
+            return None
+
+        from rag_system.tools import EnhancedRagRetrievalTool
+        from rag_system.agents import RagAgents
+        from rag_system.tasks import RagTasks
+
+        qna_tool = EnhancedRagRetrievalTool(vector_store=vector_store)
+        agents = RagAgents([qna_tool])
+        tasks = RagTasks(qna_tool)
+        
+        # New agent and task for subtopic extraction
+        analyzer_agent = agents.document_analyzer_agent()
+        subtopic_task = tasks.extract_subtopics_task(analyzer_agent, documents)
+
+        analyzer_crew = Crew(
+            agents=[analyzer_agent],
+            tasks=[subtopic_task],
+            process=Process.sequential,
+            verbose=False,
+            memory=False,
+            cache=False,
+        )
+
+        subtopic_list = analyzer_crew.kickoff()
+        return str(subtopic_list)
+
+    except Exception as e:
+        st.warning(f"Failed to generate subtopic suggestions: {e}")
+        return None
+
 
 def switch_to_chat(chat_id):
     """Switch to a specific chat and load its context - FIXED VERSION"""
@@ -483,11 +517,7 @@ with st.sidebar:
             else "📄 Create Documents for Chat"
         )
 
-        if st.button(
-            process_button_text,
-            type="primary",
-            disabled=st.session_state.processing_docs,
-        ):
+        if st.button(process_button_text, type="primary", disabled=st.session_state.processing_docs):
             if uploaded_files or urls_input:
                 st.session_state.processing_docs = True
 
@@ -496,20 +526,15 @@ with st.sidebar:
                         documents = load_and_process_data(uploaded_files, urls_input)
 
                         if documents:
-                            # Initialize or add to chat-specific vector store
                             if st.session_state.vector_store:
-                                st.session_state.vector_store = (
-                                    add_documents_to_chat_store(
-                                        st.session_state.chat_id,
-                                        st.session_state.vector_store,
-                                        documents,
-                                    )
+                                st.session_state.vector_store = add_documents_to_chat_store(
+                                    st.session_state.chat_id,
+                                    st.session_state.vector_store,
+                                    documents
                                 )
                             else:
-                                st.session_state.vector_store = (
-                                    initialize_chat_vector_store(
-                                        st.session_state.chat_id, documents
-                                    )
+                                st.session_state.vector_store = initialize_chat_vector_store(
+                                    st.session_state.chat_id, documents
                                 )
 
                             st.session_state.documents_loaded = True
@@ -536,6 +561,12 @@ with st.sidebar:
                                             auto_summary,
                                         )
 
+                            with st.spinner("Generating suggested subtopics..."):
+                                subtopics = generate_subtopic_suggestions(documents, st.session_state.vector_store)
+                                if subtopics:
+                                    subtopic_message = {"role": "assistant", "content": f"Here are some questions you might want to ask:\n\n{subtopics}", "type": "subtopics"}
+                                    st.session_state.messages.append(subtopic_message)
+                                    save_chat_message(st.session_state.chat_id, "assistant", f"Suggested Questions:\n{subtopics}")
                         else:
                             st.error("❌ No valid documents found to process")
 

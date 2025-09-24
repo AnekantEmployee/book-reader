@@ -42,6 +42,21 @@ class RagAgents:
             memory=False,
         )
 
+    def document_analyzer_agent(self):
+        return Agent(
+            role="Document Analyzer",
+            goal="Extract key subtopics and structure from a given document for user navigation.",
+            backstory="""You are an expert at parsing document structure. Your skill lies in identifying
+            headings, sections, and important concepts to create a concise table of contents or
+            a list of suggested questions for the user. Your output should be clean and easy to use.""",
+            llm=llm,
+            verbose=True,
+            allow_delegation=False,
+            max_iter=1,
+            max_execution_time=60,
+            memory=False,
+        )
+
     def formatting_agent(self):
         return Agent(
             role="Answer Formatter",
