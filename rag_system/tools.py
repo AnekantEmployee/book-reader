@@ -63,7 +63,36 @@ class EnhancedRagRetrievalTool(BaseTool):
             words = cleaned_query.split()
             if len(words) > 3:
                 stop_words = {
-                    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
+                    "the",
+                    "a",
+                    "an",
+                    "and",
+                    "or",
+                    "but",
+                    "in",
+                    "on",
+                    "at",
+                    "to",
+                    "for",
+                    "of",
+                    "with",
+                    "by",
+                    "is",
+                    "are",
+                    "was",
+                    "were",
+                    "be",
+                    "been",
+                    "have",
+                    "has",
+                    "had",
+                    "do",
+                    "does",
+                    "did",
+                    "will",
+                    "would",
+                    "could",
+                    "should",
                 }
                 key_terms = [
                     word for word in words if word not in stop_words and len(word) > 2
@@ -219,6 +248,7 @@ class EnhancedRagRetrievalTool(BaseTool):
         """Helper method to get the centralized LLM instance"""
         try:
             from rag_system.config import llm as global_llm
+
             return global_llm
         except ImportError:
             # Fallback for testing or standalone use
@@ -230,28 +260,38 @@ class EnhancedRagRetrievalTool(BaseTool):
             )
 
     def _fallback_response(self, documents: List, query: str) -> str:
-        """Fallback response when main retrieval chain fails"""
+        """Enhanced fallback response that actually uses the retrieved context"""
         try:
-            # Combine document content
+            if not documents:
+                return "No relevant information found in the documents."
+
+            # Combine document content more intelligently
             context_parts = []
-            for i, doc in enumerate(documents[:3]):
-                content = doc.page_content[:600]
-                context_parts.append(f"**Source {i+1}:** {content}")
+            for i, doc in enumerate(documents[:4]):  # Use more documents
+                content = doc.page_content.strip()
+                if content:  # Only add non-empty content
+                    # Clean up the content
+                    content = content.replace("\n\n", "\n").replace("  ", " ")
+                    context_parts.append(f"Source {i+1}: {content[:800]}")
+
+            if not context_parts:
+                return "Documents were found but appear to contain no readable content."
 
             combined_context = "\n\n".join(context_parts)
 
+            # Create a more intelligent response based on the context
             response = f"""Based on the available information from your documents:
 
-{combined_context[:1500]}
+{combined_context}
 
 **Query:** "{query}"
 
-**Note:** This is a simplified response due to Google Gen AI processing limitations. The system found relevant information but couldn't generate an AI-enhanced response. Please try rephrasing your question or check your Google Gen API configuration."""
+The documents contain relevant information as shown above. While this may not directly answer your specific question about "{query}", the available content provides related information that may be helpful."""
 
             return response
 
         except Exception as e:
-            return f"Found relevant information in your documents, but encountered processing issues. Please try rephrasing your question. Technical details: {str(e)}"
+            return f"Found documents but encountered processing error: {str(e)}"
 
 
 # Maintain backward compatibility

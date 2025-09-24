@@ -1,32 +1,37 @@
-# rag_system/tasks.py
-
 from crewai import Task
 from textwrap import dedent
 from typing import List, Any
 
 
 class RagTasks:
+
     def __init__(self, qna_tool):
         self.qna_tool = qna_tool
 
     def answer_question_task(self, agent, question):
-        """Enhanced question answering task with better prompts"""
+        """Enhanced question answering task with better context handling"""
         return Task(
             description=dedent(
                 f"""
-                Use the Enhanced RAG Retrieval Tool to find the most relevant information and directly answer the following question:
+                Use the Enhanced RAG Retrieval Tool to find relevant information and answer this question:
                 
                 Question: '{question}'
                 
-                Instructions:
-                1. Provide a comprehensive answer based on the context.
-                2. If information is limited, clearly state "No relevant information found in the documents".
-                3. The output should be a single, raw block of text ready for final formatting. Do not apply any formatting or special characters.
+                CRITICAL INSTRUCTIONS:
+                1. ALWAYS use the tool to retrieve context first
+                2. If you get ANY relevant information, use it to provide a helpful answer
+                3. If the retrieved context is related but doesn't directly answer the question, still provide what information you can
+                4. Only say "No relevant information found" if the tool returns truly empty or unrelated results
+                5. When information is partial, clearly explain what you know and what's missing
+                6. Be helpful and informative with whatever context you receive
+                
+                Example: If asked "difference between A and B" but context shows "A vs C", explain what you know about A and mention that B information wasn't found.
                 """
             ),
             expected_output=dedent(
                 """
-                A single, raw text block containing the comprehensive answer to the question.
+                A comprehensive answer based on the retrieved context. If context is available, provide a detailed response.
+                If context is partial, provide what information is available and note limitations.
                 """
             ),
             agent=agent,
@@ -44,6 +49,7 @@ class RagTasks:
                 2. Use bullet points (-) for lists of items or key points.
                 3. The final response should be professional, well-organized, and easy to read.
                 4. Do not add any new information.
+                5. If the previous answer mentioned limitations or partial information, preserve that context.
                 """
             ),
             expected_output=dedent(
@@ -53,7 +59,6 @@ class RagTasks:
             ),
             agent=agent,
         )
-
 
     def summarize_documents_task(self, agent, documents):
         """Enhanced document summarization task"""

@@ -1,4 +1,4 @@
-# rag_system/agents.py
+# agents.py - Updated agent definitions
 
 from crewai import Agent
 from rag_system.config import llm
@@ -11,8 +11,14 @@ class RagAgents:
     def qna_agent(self):
         return Agent(
             role="RAG Assistant",
-            goal="Answer user questions concisely and accurately using retrieved documents. Focus on providing direct, fact-based answers. Do not handle any formatting.",
-            backstory="""You are an intelligent RAG assistant that understands context and provides helpful, concise answers based on available information. Your goal is to be accurate and direct, citing information when it is available in the retrieved documents.""",
+            goal="Answer user questions accurately using retrieved documents. Always provide helpful information when relevant context is available, even if not perfectly matching the query.",
+            backstory="""You are an intelligent RAG assistant that analyzes retrieved context carefully. 
+            You should:
+            1. Always examine the retrieved context thoroughly
+            2. Provide helpful information even if it's related but not exactly matching the query
+            3. Clearly state when information is partial or when you need to infer connections
+            4. Never say 'no information found' when there is actually relevant context available
+            5. If the query asks about concept A vs B, but context has A vs C, explain what you know about A and mention the limitation""",
             llm=llm,
             tools=self.tools,
             verbose=True,
