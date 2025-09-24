@@ -21,7 +21,7 @@ if not google_api_key:
     raise ValueError("GOOGLE_API_KEY environment variable not set.")
 
 llm = LLM(
-    model="gemini/gemini-2.5-flash",
+    model="gemini/gemini-1.5-flash",
     temperature=0.1,
     api_key=google_api_key,
 )
