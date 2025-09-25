@@ -76,7 +76,7 @@ def verify_setup():
             google_api_key = os.getenv("GOOGLE_API_KEY")
             if not google_api_key:
                 return False, "GOOGLE_API_KEY not found in environment variables."
-            test_llm = LLM(model="gemini/gemini-1.5-flash", api_key=google_api_key)
+            test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=google_api_key)
             test_embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=google_api_key)
 
         with st.spinner("Testing LLM and embeddings connection..."):
