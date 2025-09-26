@@ -14,6 +14,7 @@ from langchain_community.vectorstores import Chroma
 from dotenv import load_dotenv
 import streamlit as st
 import time
+
 # Import the centralized LLM and embeddings from config.py
 from rag_system.config import llm, embeddings, USE_OLLAMA
 
@@ -57,6 +58,7 @@ def cleanup_chroma_clients():
 
         # Force garbage collection
         import gc
+
         gc.collect()
     except Exception as e:
         print(f"Warning: Could not cleanup Chroma clients: {e}")
@@ -68,16 +70,20 @@ def verify_setup():
         if USE_OLLAMA:
             from langchain.llms import Ollama
             from langchain_community.embeddings import OllamaEmbeddings
-            test_llm = Ollama(model="qwen2.5:0.5b")
-            test_embeddings = OllamaEmbeddings(model="nomic-embed-text")
+
+            test_llm = Ollama(model="ollama/qwen2.5:0.5b")
+            test_embeddings = OllamaEmbeddings(model="ollama/nomic-embed-text:latest")
         else:
             from crewai import LLM
             from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
             google_api_key = os.getenv("GOOGLE_API_KEY")
             if not google_api_key:
                 return False, "GOOGLE_API_KEY not found in environment variables."
             test_llm = LLM(model="gemini/gemini-2.5-flash", api_key=google_api_key)
-            test_embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=google_api_key)
+            test_embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/gemini-embedding-001", google_api_key=google_api_key
+            )
 
         with st.spinner("Testing LLM and embeddings connection..."):
             test_embedding = test_embeddings.embed_query("test initialization")
@@ -85,6 +91,7 @@ def verify_setup():
                 return False, "Embeddings returned empty result."
 
             from crewai import Agent, Task, Crew, Process
+
             test_agent = Agent(
                 role="Test Agent",
                 goal="Validate LLM connectivity.",
@@ -188,7 +195,9 @@ def add_documents_to_chat_store(chat_id, vector_store, new_documents):
         new_count = len(existing_docs) + len(new_documents)
         update_chat_document_info(chat_id, new_count, True)
         for i, doc in enumerate(new_documents):
-            doc_name = doc.metadata.get("source", f"Document_{len(existing_docs) + i + 1}")
+            doc_name = doc.metadata.get(
+                "source", f"Document_{len(existing_docs) + i + 1}"
+            )
             add_chat_document(chat_id, doc_name, "file", 1)
         st.success(f"Added {len(new_documents)} documents to chat (Total: {new_count})")
         return vector_store
@@ -211,8 +220,10 @@ def reset_chat_vector_store(chat_id):
             shutil.rmtree(vector_store_path, ignore_errors=True)
         update_chat_document_info(chat_id, 0, False)
         from rag_system.persistence import init_db
+
         init_db()
         import sqlite3
+
         conn = sqlite3.connect("chat_history.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM chat_documents WHERE chat_id = ?", (chat_id,))
@@ -279,6 +290,6 @@ __all__ = [
     "add_documents_to_chat_store",
     "reset_chat_vector_store",
     "get_chat_vector_store_info",
-    "verify_setup", # Changed function name to be more generic
+    "verify_setup",  # Changed function name to be more generic
     "cleanup_on_exit",
 ]

@@ -27,11 +27,13 @@ if USE_OLLAMA:
 
     try:
         # LLM for reasoning
-        llm = Ollama(model="qwen2.5:0.5b", base_url=ollama_base_url, temperature=0.1)
+        llm = Ollama(
+            model="ollama/qwen2.5:0.5b", base_url=ollama_base_url, temperature=0.1
+        )
 
         # Embeddings for RAG
         embeddings = OllamaEmbeddings(
-            model="nomic-embed-text", base_url=ollama_base_url
+            model="ollama/nomic-embed-text:latest", base_url=ollama_base_url
         )
 
         print("✅ Using Ollama for LLM and Embeddings.")
