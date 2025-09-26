@@ -338,4 +338,3 @@ def load_and_process_data(uploaded_files, urls_input):
     except Exception as e:
         print(f"❌ Error splitting documents: {e}")
         return documents
-

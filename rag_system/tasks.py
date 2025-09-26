@@ -60,7 +60,7 @@ class RagTasks:
                 CRITICAL INSTRUCTIONS:
                 1. ALWAYS use the tool to retrieve context first
                 2. If you get ANY relevant information, use it to provide a helpful answer
-                3. If the retrieved context is related but doesn't directly answer the question, still provide what information you can
+                3. If the retrieved context is related but doesn't directly answer the question, say so clearly
                 4. Only say "No relevant information found" if the tool returns truly empty or unrelated results
                 5. When information is partial, clearly explain what you know and what's missing
                 6. Be helpful and informative with whatever context you receive
